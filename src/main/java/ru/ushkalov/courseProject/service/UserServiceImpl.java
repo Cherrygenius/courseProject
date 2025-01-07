@@ -11,6 +11,7 @@ import ru.ushkalov.courseProject.repository.UserRepository;
 
 import java.util.Arrays;
 import java.util.List;
+import java.util.Optional;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,8 +26,6 @@ public class UserServiceImpl implements UserService {
         this.userRepository = userRepository;
         this.roleRepository = roleRepository;
     }
-
-
 
     @Override
     public void saveUser(UserDto userDto) {
@@ -47,8 +46,6 @@ public class UserServiceImpl implements UserService {
             user.setRoles(Arrays.asList(role));
             userRepository.save(user);
         } else {
-            // Обработка ошибки или создание роли
-            // Например, можно создать роль или выбросить исключение
             throw new RuntimeException("Role 'ROLE_USER' not found");
         }
     }
@@ -62,11 +59,11 @@ public class UserServiceImpl implements UserService {
     public List<UserDto> findAllUsers() {
         List<User> users = userRepository.findAll();
         return users.stream()
-                .map((user) -> mapToUserDto(user))
+                .map(this::mapToUserDto)
                 .collect(Collectors.toList());
     }
 
-    private UserDto mapToUserDto(User user){
+    private UserDto mapToUserDto(User user) {
         UserDto userDto = new UserDto();
         String[] str = user.getName().split(" ");
         userDto.setFirstName(str[0]);
@@ -76,20 +73,45 @@ public class UserServiceImpl implements UserService {
     }
 
     private void checkRolesExist() {
-        // Список ролей, которые должны быть созданы
         List<String> roleNames = Arrays.asList("ROLE_ADMIN", "ROLE_USER", "ROLE_READ_ONLY");
-
-        // Проходим по списку ролей и добавляем их, если их нет в базе данных
         for (String roleName : roleNames) {
             createRoleIfNotExists(roleName);
         }
     }
+
     private void createRoleIfNotExists(String roleName) {
-        // Проверяем, существует ли роль
         if (roleRepository.findByName(roleName) == null) {
             Role role = new Role();
             role.setName(roleName);
             roleRepository.save(role);
+        }
+    }
+
+    // Добавление роли пользователю
+    public void addRoleToUser(Long userId, String roleName) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        Role role = roleRepository.findByName(roleName);
+
+        if (userOpt.isPresent() && role != null) {
+            User user = userOpt.get();
+            user.getRoles().add(role); // Добавляем роль в список ролей
+            userRepository.save(user); // Сохраняем изменения
+        } else {
+            throw new RuntimeException("User or Role not found");
+        }
+    }
+
+    // Удаление роли у пользователя
+    public void removeRoleFromUser(Long userId, String roleName) {
+        Optional<User> userOpt = userRepository.findById(userId);
+        Role role = roleRepository.findByName(roleName);
+
+        if (userOpt.isPresent() && role != null) {
+            User user = userOpt.get();
+            user.getRoles().remove(role); // Удаляем роль из списка ролей
+            userRepository.save(user); // Сохраняем изменения
+        } else {
+            throw new RuntimeException("User or Role not found");
         }
     }
 }

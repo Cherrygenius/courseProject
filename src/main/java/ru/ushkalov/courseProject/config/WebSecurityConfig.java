@@ -23,7 +23,7 @@ public class WebSecurityConfig {
                     .authorizeHttpRequests(authorize -> authorize
                             .requestMatchers("/register/**", "/index").permitAll()
                             .requestMatchers("/addStudentForm", "/list", "/saveStudent", "/deleteStudent", "/showUpdateForm").authenticated()
-                            .requestMatchers("/users").hasRole("ADMIN"))
+                            .requestMatchers("/users", "/manageRoles", "/editRoles/**", "/saveRoles").hasRole("ADMIN"))
                     .formLogin(form -> form
                             .loginPage("/login")
                             .loginProcessingUrl("/login")
