@@ -12,118 +12,61 @@ import org.springframework.web.servlet.ModelAndView;
 import ru.ushkalov.courseProject.entity.Student;
 import ru.ushkalov.courseProject.entity.User;
 import ru.ushkalov.courseProject.repository.StudentRepository;
-import ru.ushkalov.courseProject.service.StudentSecurity;
-import ru.ushkalov.courseProject.service.UserService;
+import ru.ushkalov.courseProject.service.UserServiceImpl;
 
 import java.util.Optional;
 
 @Controller
 @Slf4j
 public class StudentController {
-
     @Autowired
     private StudentRepository studentRepository;
 
     @Autowired
-    private UserService userService;
+    private UserServiceImpl userService;
 
-    @Autowired
-    private StudentSecurity studentSecurity;
-
-    /**
-     * Просмотр списка студентов.
-     * ADMIN видит всех студентов.
-     * USER видит только своих студентов.
-     * READ_ONLY видит всех студентов, но не может редактировать.
-     */
     @GetMapping("/list")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER') or hasRole('READ_ONLY')")
     public ModelAndView getAllStudents() {
-        User currentUser = userService.getCurrentUser(); // Текущий пользователь
+        User currentUser = userService.getCurrentUser(); // Получаем текущего пользователя
+        log.info("User {} accessed the student list", currentUser.getEmail());
         ModelAndView mav = new ModelAndView("list-students");
-
-        // Если ADMIN, возвращаем всех студентов
-        if (currentUser.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_ADMIN"))) {
-            mav.addObject("students", studentRepository.findAll());
-        }
-        // Если USER, возвращаем только своих студентов
-        else if (currentUser.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_USER"))) {
-            mav.addObject("students", studentRepository.findAll().stream()
-                    .filter(student -> student.getCreatedBy().equals(currentUser))
-                    .toList());
-        }
-        // Если READ_ONLY, также возвращаем всех студентов
-        else if (currentUser.getRoles().stream().anyMatch(role -> role.getName().equals("ROLE_READ_ONLY"))) {
-            mav.addObject("students", studentRepository.findAll());
-        }
-
+        mav.addObject("students", studentRepository.findByCreatedBy(currentUser));
         return mav;
     }
 
-    /**
-     * Показ формы для добавления студента.
-     * Только ADMIN и USER имеют доступ.
-     */
     @GetMapping("/addStudentForm")
-    @PreAuthorize("hasRole('ADMIN') or hasRole('USER')")
     public ModelAndView addStudentForm() {
+        log.info("User {} is accessing the add student form", userService.getCurrentUser().getEmail());
         ModelAndView mav = new ModelAndView("add-student-form");
-        Student student = new Student();
-        mav.addObject("student", student);
+        mav.addObject("student", new Student());
         return mav;
     }
 
-    /**
-     * Сохранение студента.
-     * Только ADMIN и USER могут сохранять студентов.
-     */
     @PostMapping("/saveStudent")
     public String saveStudent(@ModelAttribute Student student) {
         User currentUser = userService.getCurrentUser();
-
-        if (student.getId() != null) {
-            // Если студент уже существует, то оставляем прежнего владельца
-            Optional<Student> existingStudent = studentRepository.findById(student.getId());
-            existingStudent.ifPresent(value -> student.setCreatedBy(value.getCreatedBy()));
-        } else {
-            // Новый студент — устанавливаем текущего пользователя как создателя
-            student.setCreatedBy(currentUser);
-        }
-
+        student.setCreatedBy(currentUser);
         studentRepository.save(student);
+        log.info("User {} saved a new student: {}", currentUser.getEmail(), student.getId());
         return "redirect:/list";
     }
 
-    /**
-     * Показ формы для обновления студента.
-     * ADMIN может редактировать всех.
-     * USER может редактировать только своих.
-     * READ_ONLY не имеет доступа.
-     */
     @GetMapping("/showUpdateForm")
     @PreAuthorize("hasRole('ADMIN') or @studentSecurity.isOwner(#studentId)")
     public ModelAndView showUpdateForm(@RequestParam Long studentId) {
+        log.info("User {} is accessing the update form for student ID {}", userService.getCurrentUser().getEmail(), studentId);
         ModelAndView mav = new ModelAndView("add-student-form");
         Optional<Student> optionalStudent = studentRepository.findById(studentId);
-
-        if (optionalStudent.isPresent()) {
-            mav.addObject("student", optionalStudent.get());
-        } else {
-            mav.addObject("student", new Student());
-        }
+        mav.addObject("student", optionalStudent.orElse(new Student()));
         return mav;
     }
 
-    /**
-     * Удаление студента.
-     * ADMIN может удалять всех.
-     * USER может удалять только своих.
-     * READ_ONLY не имеет доступа.
-     */
     @GetMapping("/deleteStudent")
     @PreAuthorize("hasRole('ADMIN') or @studentSecurity.isOwner(#studentId)")
     public String deleteStudent(@RequestParam Long studentId) {
+        User currentUser = userService.getCurrentUser();
         studentRepository.deleteById(studentId);
+        log.info("User {} deleted student ID {}", currentUser.getEmail(), studentId);
         return "redirect:/list";
     }
 }
