@@ -1,7 +1,5 @@
 <!DOCTYPE html>
-<html lang="en"
-      xmlns:th="http://www.thymeleaf.org"
->
+<html lang="en" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
 <head>
     <meta charset="UTF-8">
     <title>Student Management System</title>
@@ -27,54 +25,60 @@
                 <li class="nav-item">
                     <a class="nav-link active" aria-current="page" th:href="@{/register}">Register</a>
                 </li>
-                <li class="nav-item" th:if="${#authorization.expression('hasRole(''ADMIN'')')}">
+                <li class="nav-item" sec:authorize="hasRole('ADMIN')">
                     <a class="nav-link active" aria-current="page" th:href="@{/manageRoles}">Users</a>
                 </li>
+            </ul>
         </div>
     </div>
 </nav>
 <div class="container">
-
     <hr/>
-    <a th:href="@{/addStudentForm}" class="btn btn-primary">Add Student</a>
-    <br/><br/>
-    <table class="table table-bordered table-striped" id="studentTable">
 
+    <!-- "Add Student" button visible only for ADMIN and USER roles -->
+    <a sec:authorize="hasAnyRole('ADMIN', 'USER')"
+       th:href="@{/addStudentForm}"
+       class="btn btn-primary">Add Student</a>
+    <br/><br/>
+
+    <table class="table table-bordered table-striped" id="studentTable">
         <thead>
         <tr>
             <th>Name</th>
             <th>Surname</th>
             <th>Faculty</th>
             <th>Age</th>
+            <!-- Display Actions column only for ADMIN and USER -->
+            <th sec:authorize="hasAnyRole('ADMIN', 'USER')">Actions</th>
         </tr>
         </thead>
         <tbody>
         <tr th:each="student: ${students}">
-            <td th:text="${student.surname}" />
-            <td th:text="${student.name}" />
-            <td th:text="${student.faculty}" />
-            <td th:text="${student.age}" />
-            <td>
+            <td th:text="${student.surname}"></td>
+            <td th:text="${student.name}"></td>
+            <td th:text="${student.faculty}"></td>
+            <td th:text="${student.age}"></td>
+            <!-- Display action buttons only for ADMIN and USER -->
+            <td sec:authorize="hasAnyRole('ADMIN', 'USER')">
                 <a th:href="@{/showUpdateForm(studentId=${student.id})}" class="btn btn-info">Update</a>
-
                 <a th:href="@{/deleteStudent(studentId=${student.id})}" class="btn btn-danger ml-2">Delete</a>
             </td>
         </tr>
         </tbody>
-
     </table>
 </div>
 
 <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
 <script type="text/javascript" src="https://cdn.datatables.net/v/bs4/dt-1.10.25/datatables.min.js"></script>
 <script>
-    $(document).ready(function() {
+    $(document).ready(function () {
         $("#studentTable").DataTable({
             'aoColumnDefs': [{
                 'bSortable': false,
-                'aTargets': [-1] /* 1st one, start by the right */
+                'aTargets': [-1] /* Disable sorting for the last column */
             }]
         });
-    })
+    });
 </script>
-</body></html>
+</body>
+</html>
