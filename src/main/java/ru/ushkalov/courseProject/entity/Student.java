@@ -30,4 +30,8 @@ public class Student {
     @Column(name = "age")
     private int age;
 
+    @ManyToOne
+    @JoinColumn(name = "created_by", nullable = false)
+    private User createdBy;
+
 }

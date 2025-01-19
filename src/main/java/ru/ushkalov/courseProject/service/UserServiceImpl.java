@@ -1,6 +1,8 @@
 package ru.ushkalov.courseProject.service;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import ru.ushkalov.courseProject.dto.UserDto;
@@ -53,6 +55,17 @@ public class UserServiceImpl implements UserService {
     @Override
     public User findUserByEmail(String email) {
         return userRepository.findByEmail(email);
+    }
+
+    public User getCurrentUser() {
+        String email = SecurityContextHolder.getContext().getAuthentication().getName();
+        User user = userRepository.findByEmail(email); // Поиск пользователя по email
+
+        if (user == null) { // Если пользователя нет, выбрасываем исключение
+            throw new UsernameNotFoundException("User not found with email: " + email);
+        }
+
+        return user;
     }
 
     @Override
